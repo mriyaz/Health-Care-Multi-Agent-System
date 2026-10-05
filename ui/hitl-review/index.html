@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthOS — HITL Review Queue</title>
+  <link rel="stylesheet" href="/ui/shared/healthos.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">H</span>
+      <div>
+        <h1>HITL Review Queue</h1>
+        <p class="subtitle">Approve tasks by priority · #101</p>
+      </div>
+    </div>
+    <div id="auth-status" class="auth-status">Not signed in</div>
+  </header>
+  <nav class="top-nav"></nav>
+
+  <main class="layout">
+    <section id="login-panel" class="card">
+      <h2>Sign in</h2>
+      <form id="login-form" class="form-grid">
+        <label>Username <input type="text" id="username" value="reviewer" required /></label>
+        <label>Password <input type="password" id="password" required /></label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p id="login-error" class="error hidden"></p>
+    </section>
+
+    <section id="queue-panel" class="card hidden">
+      <div class="panel-head">
+        <h2>Tasks awaiting approval</h2>
+        <button id="refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+      </div>
+      <div id="queue-list"></div>
+      <p id="queue-error" class="error hidden"></p>
+    </section>
+  </main>
+  <footer class="app-footer">HealthOS · HITL · <a href="/docs" target="_blank">API docs</a></footer>
+  <script src="/ui/shared/healthos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

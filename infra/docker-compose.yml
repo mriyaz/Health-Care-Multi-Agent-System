@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: healthos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-healthos}
+      POSTGRES_USER: ${POSTGRES_USER:-healthos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only_change_me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-healthos} -d ${POSTGRES_DB:-healthos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: healthos-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  weaviate:
+    # Python client 4.20+ requires server >= 1.27.0. REST defaults to 8080; gRPC defaults to 50051 inside the image.
+    image: semitechnologies/weaviate:1.27.9
+    container_name: healthos-weaviate
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # HTTP (GraphQL / REST / v1 schema)
+      - "50051:50051" # gRPC (used by weaviate-client v4 for high-throughput ops)
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"  # dev only
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"                # you can change later when you pick a vectorizer
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    container_name: healthos-hapi-fhir
+    restart: unless-stopped
+    ports:
+      - "8082:8080"   # host:container
+    # For simple dev use, HAPI uses its internal DB; 
+    # you can wire Postgres later if desired.
+    # Optional volume if you want to persist HAPI state across restarts:
+    # volumes:
+    #   - hapi_data:/var/lib/hapi
+
+volumes:
+  postgres_data:
+  redis_data:
+  weaviate_data:
+  # hapi_data:

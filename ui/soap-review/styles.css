@@ -1,0 +1,74 @@
+/* SOAP review — page-specific styles (shared base in /ui/shared/healthos.css) */
+
+.status-bar {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #eef4ff;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.soap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.soap-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.edited-tag {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #b45309;
+  background: var(--warn-bg);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.soap-field.edited textarea {
+  background: var(--edited-bg);
+  border-color: var(--warn-border);
+}
+
+.result-banner {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.result-banner.success {
+  background: #ecfdf3;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.result-banner.warn {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: #92400e;
+}
+
+.btn-danger.btn-outline {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-danger.btn-outline:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+@media (max-width: 720px) {
+  .soap-grid {
+    grid-template-columns: 1fr;
+  }
+}

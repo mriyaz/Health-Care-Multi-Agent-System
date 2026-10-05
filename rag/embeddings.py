@@ -1,2 +1,0 @@
-﻿# Embedding model configuration
-

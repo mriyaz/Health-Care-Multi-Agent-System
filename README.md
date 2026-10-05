@@ -1,389 +1,313 @@
-# 🏥 Healthcare Multi-Agent Intake System
+# HealthOS — Multi-Agent Healthcare AI Platform
 
-> **An end-to-end agentic AI pipeline for automating patient intake, clinical note generation, and medical triage — built with LangGraph, RAG, and GPT-5.2.**
+A reference implementation of a durable, human-supervised healthcare agent architecture built with LangGraph, FastAPI, PostgreSQL and FHIR.
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)](https://python.org)
-[![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-green)](https://github.com/langchain-ai/langgraph)
-[![LangChain](https://img.shields.io/badge/LangChain-1.2+-green)](https://langchain.com)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.134+-orange?logo=fastapi)](https://fastapi.tiangolo.com)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5.2-purple?logo=openai)](https://openai.com)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)]()
+**Status: Early MVP / technical validation project.**
 
----
+HealthOS is an engineering demonstration. It uses synthetic and test healthcare data only. It is not production clinical software, not a medical device, and not intended for autonomous diagnosis, treatment, or unsupervised clinical decision-making. It has not been formally HIPAA certified, has not been production validated, and has not been benchmarked at production scale.
 
-## 📌 Overview
+Clinical recommendations in this system are drafts for a human reviewer. FHIR write-back of a note happens only after an authenticated approval.
 
-Healthcare administrative burden continues to escalate amid workforce shortages and rising demands. In 2026, clinicians spend up to **40% of their working time on documentation** rather than patient care, with 76% of leaders reporting overwhelming workloads leading to burnout and operational risks. Front-desk staff handle increasing volumes of interactions, exacerbated by post-pandemic recovery and aging populations, resulting in errors, delays, and missed critical information.
+All included patient and clinical examples are synthetic and are provided solely for development and demonstration.
 
-This project demonstrates a **production-ready multi-agent AI system** that automates the end-to-end patient intake workflow — from first contact through to a structured clinical summary ready for the treating clinician. It leverages agentic AI trends, including multi-agent orchestration for autonomous workflows, predictive analytics for triage, and ethical AI integration. Built on foundations used in real-world deployments (RAG-enabled EHR pipelines, AI transcription), now enhanced with LangGraph for advanced agentic capabilities, GPT-5.2 for superior reasoning, and multimodal support for voice and image inputs.
+## Overview
 
-> ⚠️ **Disclaimer:** This system is built for **research, portfolio, and educational purposes only**. It is not intended for clinical deployment or medical decision-making without appropriate regulatory approval and clinical validation.
+HealthOS coordinates specialist workflows through a typed LangGraph state, a FastAPI API, and a local FHIR server. The implemented path is a clinical documentation workflow: accept a transcript, de-identify it before an external model call, draft a SOAP note, score confidence, pause for review when needed, and write an approved `DocumentReference` to HAPI FHIR.
 
-**Key Benefits in 2026 Context:**
-- Reduces administrative burden by automating repetitive tasks, allowing clinicians more patient-facing time.
-- Integrates with emerging trends like AI as the "front door" to healthcare, using chatbots and virtual assistants for initial triage.
-- Supports ethical AI practices, including bias mitigation and human-in-the-loop oversight.
+A revenue-cycle coding audit path is also implemented as an MVP pipeline. It is a heuristic and optional-LLM prototype, not a validated coding product. See [RCM functionality](#rcm-functionality).
 
----
+## What HealthOS demonstrates
 
-## 🎯 The Problem This Solves
+- Multi-agent orchestration with an explicit LangGraph
+- Typed shared state, including tenant, task, confidence, and model metadata
+- PostgreSQL-backed checkpointing, with an in-memory backend for tests
+- Pause and resume through a human-in-the-loop gate
+- Retry with backoff and a configured fallback model
+- Per-task token budget handling
+- FastAPI APIs with JWT auth and tenant-scoped queries
+- Structured SOAP generation, quality checks, and clinician approval
+- A pluggable FHIR adapter aimed at compatible EHR systems
+- Append-only audit records
+- Synthetic local demo data
+- Optional Langfuse tracing
+- Pytest, Black, and Flake8 in GitHub Actions
+- Docker Compose for PostgreSQL, Redis, Weaviate, and HAPI FHIR
 
-| Pain Point | Current Reality (2026) | This System's Solution |
-|---|---|---|
-| Patient intake forms | Manual or fragmented digital forms, with 75% of leaders noting increased workloads | Conversational AI intake via voice, text, or multimodal inputs, reducing wait times by 40% |
-| Clinical note creation | 15–30 min per patient for manual SOAP notes, amid rising burnout (76% overwhelming) | Auto-generated structured notes in < 30 seconds using GPT-5.2 |
-| Patient history retrieval | Manual EHR searches, contributing to operational risks | RAG agent retrieves relevant history automatically with semantic search |
-| Triage prioritisation | Inconsistent, with AI now embedded in workflows for predictive analytics | Standardised AI triage scoring with reasoning, including real-time risk prediction |
-| Drug interaction checks | Often skipped under time pressure, despite growing complexity | Automated checks with OpenFDA API + agentic reasoning for contraindications |
+## Architecture
 
----
-
-## 🏗️ System Architecture
-
-The system employs a **supervisor multi-agent pattern** in LangGraph, where a central Supervisor Agent routes tasks to specialised sub-agents, now enhanced with agentic AI for autonomous planning and multi-agent collaboration. This aligns with 2026 trends in agentic frameworks like Corti's for healthcare-specific orchestration.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        PATIENT INPUT                            │
-│         (Voice / Text / Form / Multimodal Submission)           │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   SUPERVISOR AGENT                              │
-│         (LangGraph StateGraph Orchestrator)                     │
-│    Routes to sub-agents with agentic autonomy & collaboration   │
-└──┬──────────┬──────────┬──────────┬──────────┬─────────────────┘
-   │          │          │          │          │
-   ▼          ▼          ▼          ▼          ▼
-┌──────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐
-│Agent │ │Agent 2 │ │Agent 3 │ │Agent 4 │ │ Agent 5  │
-│  1   │ │        │ │        │ │        │ │          │
-│Intake│ │History │ │Clinical│ │Drug    │ │ Triage   │
-│& NER │ │Retrieval│ │Note    │ │Interac-│ │ & Urgency│
-│      │ │(RAG)   │ │Generator│ │tion    │ │ Scoring  │
-│      │ │        │ │        │ │Checker │ │          │
-└──────┘ └────────┘ └────────┘ └────────┘ └──────────┘
-   │          │          │          │          │
-   └──────────┴──────────┴──────────┴──────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   SHARED STATE (LangGraph)                      │
-│    patient_id | symptoms | history | notes | flags | score      │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              CLINICIAN DASHBOARD (Streamlit / FastAPI)          │
-│         Structured SOAP Note + Triage Score + Alerts            │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+  client[Client_and_clinician_UI] --> api[FastAPI]
+  api --> orch[Orchestrator]
+  orch --> state[LangGraph_state]
+  state --> docs[Documentation_agent]
+  state --> rcm[RCM_agent_MVP]
+  docs --> hitl[HITL_approval]
+  rcm --> hitl
+  hitl --> adapter[FHIR_adapter]
+  adapter --> hapi[HAPI_FHIR]
+  orch --> pg[(PostgreSQL_checkpoints_and_audit)]
+  api --> redis[(Redis)]
+  rcm --> weaviate[(Weaviate_payer_rules)]
+  api --> obs[Logs_and_optional_Langfuse]
 ```
 
-### Agent Responsibilities
+A static diagram is in [docs/architecture/healthos_architecture_v4.svg](docs/architecture/healthos_architecture_v4.svg). The prior-auth box on that diagram is a roadmap item. The running code does not include a prior-auth agent. More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-| Agent | Role | Key Technology |
-|---|---|---|
-| **Agent 1 — Intake & NER** | Collects demographics, complaints, symptoms; extracts entities with multimodal support | GPT-5.2 + spaCy NER + Multimodal processing |
-| **Agent 2 — History Retrieval (RAG)** | Retrieves patient history via semantic search; now with predictive analytics integration | LlamaIndex + ChromaDB + Agentic retrieval |
-| **Agent 3 — Clinical Note Generator** | Generates SOAP notes from intake + history; enhanced with ethical AI checks | GPT-5.2 with medical templates + Bias mitigation |
-| **Agent 4 — Drug Interaction Checker** | Checks medications for contraindications; agentic reasoning for complex cases | OpenFDA API + GPT-5.2 reasoning |
-| **Agent 5 — Triage & Urgency Scorer** | Assigns urgency with clinical reasoning; incorporates real-time data from wearables | GPT-5.2 + Rule-based scoring + Predictive AI |
-| **Supervisor** | Orchestrates workflow with autonomy; handles errors, retries, and multi-agent debates | LangGraph StateGraph + Agentic frameworks |
+## Implemented MVP capabilities
 
----
+| Area | What the code does today |
+| --- | --- |
+| API | FastAPI app with health, auth, tasks, notes, documentation, RCM, and FHIR proxy routes |
+| Orchestrator | Routes `task_type` to documentation or RCM, checkpoints state, enforces a step limit and routing-loop guard |
+| Documentation | Transcript or optional local Whisper audio, PHI placeholder de-identification, SOAP / discharge / referral drafts, confidence and section flags |
+| Review | SOAP review UI, edit, approve, then `DocumentReference` write-back |
+| RCM | Coding-audit task, offline heuristic codes, optional model JSON, lexical attributions, synthetic payer-rule lookup, pre-bill checks, denial-risk score, claim row |
+| Auth | JWT access and refresh tokens, bcrypt passwords, role checks, tenant id on principal |
+| Data | Async SQLAlchemy models and Alembic migrations for users, patients, encounters, tasks, notes, claims, agent logs, audit trail |
 
-## 🛠️ Tech Stack
+## Orchestrator
 
-### Core Agentic Framework
-- **[LangGraph](https://github.com/langchain-ai/langgraph)** (v0.2+) — Multi-agent orchestration with persistent state and agentic autonomy for 2026 workflows.
-- **[LangChain](https://langchain.com)** (v1.2+) — LLM chaining, tools, prompts; updated for model profiles and summarization.
-- **[OpenAI GPT-5.2](https://openai.com)** — Advanced model for generation tasks, with improved reasoning and agentic capabilities.
+The graph is `START → route_task → run_specialist → maybe_hitl → human_gate → END`.
 
-### RAG & Memory
-- **[LlamaIndex](https://llamaindex.ai)** — Ingestion, indexing, retrieval; enhanced for multimodal data.
-- **[ChromaDB](https://trychroma.com)** — Vector database for embeddings.
-- **[OpenAI text-embedding-3-small](https://openai.com)** — Semantic search embeddings.
+`OrchestratorState` carries `task_id`, `task_type`, `tenant_id`, `patient_id`, `encounter_id`, `status`, `agent_outputs`, `hitl_required`, `confidence_scores`, `model_versions`, token counters, and routing-loop fields.
 
-### API & Serving
-- **[FastAPI](https://fastapi.tiangolo.com)** (v0.134+) — Async API with Pydantic model parameters.
-- **[Streamlit](https://streamlit.io)** — Dashboard UI.
-- **[Docker Compose](https://docs.docker.com/compose/)** — Deployment.
+Routing maps a task type to the documentation or RCM specialist. Repeated identical routes and a step ceiling fail the task instead of spinning.
 
-### Data & Utilities
-- **[spaCy](https://spacy.io)** — NER (en_core_sci_md).
-- **[Pydantic v2](https://docs.pydantic.dev)** — Validation.
-- **[MongoDB](https://mongodb.com)** — Storage.
-- **[OpenFDA API](https://open.fda.gov/apis/)** — Drug data.
+Transient HTTP errors to the model provider are retried with exponential jitter. If the primary model is exhausted, the node calls the configured fallback model. If the token counter is already at the task budget, the primary call is skipped in favour of the fallback model.
 
-**New Additions for 2026:**
-- Multimodal AI support (e.g., GPT-5.2 for voice/image).
-- Ethical AI tools for bias detection.
-- Integration with wearables/telemedicine APIs.
+Checkpoints use Postgres when `HEALTHOS_ORCHESTRATOR_CHECKPOINTER=postgres`. Tests and machines without that database use `memory`. Memory checkpoints do not survive a process restart.
 
----
+## Clinical Documentation Agent
 
-## 📁 Project Structure
+`POST /tasks/document` starts a documentation task from a transcript or an uploaded audio file.
 
-```
-Health-Care-Multi-Agent-System/
-│
-├── agents/
-│   ├── __init__.py
-│   ├── supervisor.py          # LangGraph StateGraph orchestrator
-│   ├── intake_agent.py        # Agent 1: Patient intake + NER
-│   ├── history_agent.py       # Agent 2: RAG history retrieval
-│   ├── note_generator.py      # Agent 3: SOAP note generation
-│   ├── drug_checker.py        # Agent 4: Drug interaction checker
-│   └── triage_agent.py        # Agent 5: Urgency scoring
-│
-├── api/
-│   ├── __init__.py
-│   ├── main.py                # FastAPI app entrypoint
-│   ├── routes/
-│   │   ├── intake.py          # POST /intake endpoint
-│   │   ├── patients.py        # GET /patient/{id} endpoint
-│   │   └── health.py          # GET /health status check
-│   └── schemas.py             # Pydantic request/response models
-│
-├── rag/
-│   ├── __init__.py
-│   ├── indexer.py             # LlamaIndex document ingestion
-│   ├── retriever.py           # Semantic search over patient history
-│   └── embeddings.py          # Embedding model configuration
-│
-├── data/
-│   ├── synthetic/             # Synthetic patient records (NEVER real PHI)
-│   │   ├── patients.json
-│   │   └── medical_history.json
-│   └── prompts/               # Prompt templates for each agent
-│       ├── intake_prompt.txt
-│       ├── soap_note_prompt.txt
-│       └── triage_prompt.txt
-│
-├── ui/
-│   └── dashboard.py           # Streamlit clinician dashboard
-│
-├── tests/
-│   ├── test_agents.py
-│   ├── test_api.py
-│   └── test_rag.py
-│
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-├── .env.example
-└── README.md
-```
+The specialist then:
 
----
+1. Transcribes audio only when Whisper is installed and not skipped. Transcript-only intake is the supported demo path.
+2. Replaces detected PHI-like spans with placeholders before an external completion call, then relinks values into the draft.
+3. Asks the configured model for SOAP, discharge, or referral JSON. With no API key, tests use the deterministic stub path.
+4. Validates structure and combines a confidence score. Low confidence sets `hitl_required`.
+5. Stores a draft `Note` with model id, confidence, flagged sections, token count, and latency.
 
-## 🚀 Getting Started
+Approval is a separate authenticated call, `POST /notes/{id}/approve`. That call is what writes the FHIR `DocumentReference`. The UI can show section edits before that approval.
 
-### Prerequisites
+## RCM functionality
 
-- Python 3.12+
-- Docker & Docker Compose (recommended)
-- OpenAI API key
-- Git
+**Implemented in this repository**
 
-### Installation
+- An orchestrated RCM audit task that requires clinical note text
+- ICD-10 and CPT suggestions from a small offline keyword stub, labelled `heuristic_stub`
+- An optional OpenRouter JSON path when an API key and model id are configured
+- Phrase attributions from a leave-one-out lexical score. The JSON field is named like a SHAP value so a later model explainer can keep the same shape. It is not TreeSHAP or DeepSHAP, and ClinicalBERT is not bundled or invoked
+- Payer-rule lookup against Weaviate when the client is up, with an in-memory synthetic fallback
+- A starter set of synthetic LCD-shaped rows for retrieval tests. These are not an official payer policy database
+- Code validation, a pre-bill checklist, a denial-risk score, and a `Claim` snapshot when an encounter exists
+- Review and analytics screens over data stored for the signed-in tenant
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/Health-Care-Multi-Agent-System.git
-cd Health-Care-Multi-Agent-System
+**Not implemented, or not validated**
 
-# 2. Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+- A trained ClinicalBERT ranker or any claim that coding accuracy was measured
+- A maintained library of real LCD policies
+- A prior-auth agent. The prior-auth screen is a demo Kanban board and says so in the API response
+- Payment posting, claim submission to a payer, or denial-recovery operations
+- Any measured effect on denial rates or revenue
 
-# 3. Install dependencies
-pip install -r requirements.txt
+## Durable execution
 
-# 4. Set up environment variables
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+LangGraph checkpoints store orchestrator state. With the Postgres backend, a task can be resumed after the API process restarts, including after a human-in-the-loop interrupt. The approve route resumes the graph. Redis is used for sessions, optional Celery, and the demo prior-auth board. It is not the source of truth for clinical state.
 
-# 5. Load synthetic patient data into ChromaDB
-python rag/indexer.py --source data/synthetic/
+## Human-in-the-loop design
 
-# 6. Start the FastAPI backend
-uvicorn api.main:app --reload --port 8000
+Low-confidence documentation and other gated specialist results set `hitl_required`. The graph interrupts at `human_gate` until `POST /tasks/{id}/approve`.
 
-# 7. In a new terminal, launch the Streamlit dashboard
-streamlit run ui/dashboard.py
+The SOAP UI lets a signed-in clinician edit sections, then approve the note. Approval is also required before FHIR write-back. Overrides and task actions are written to the audit trail with actor, timestamp, and metadata. Confidence thresholds are a control in this demo, not a clinical safety certification.
+
+## FHIR integration
+
+HealthOS uses a pluggable FHIR adapter layer designed to support integration with compatible EHR systems. Local development targets HAPI FHIR R4 at `http://localhost:8082/fhir`.
+
+The API can read and write Patient, Encounter, Condition, Observation, MedicationRequest, ServiceRequest, and DocumentReference resources, and can mirror a Patient or Encounter into Postgres. `POST /integrations/fhir/adapters/example-ehr/demo-bundle` loads one synthetic example bundle. That bundle is not a vendor integration.
+
+SMART on FHIR client settings exist as optional environment variables. They are not a completed embedded-EHR launch.
+
+## Multi-tenancy
+
+Users, tasks, encounters, notes, and claims carry a `tenant_id`. Request handlers scope queries to the authenticated principal's tenant. The local demo seed uses one fixed tenant UUID so the clinician and admin users share the same synthetic chart. That is a development convenience, not a proof of production isolation under hostile tenants.
+
+## Auditability
+
+`audit_trail` is append-only at the application layer. Orchestrator routing, specialist outputs, and human approvals append events that include action name, task id, tenant id, and metadata such as model version, confidence, and input hash where the specialist recorded them. The compliance screen filters and exports that table for the current tenant. Export is an engineering aid. It is not a compliance report and it is not a certification artifact.
+
+## Technology stack
+
+| Concern | Choice in this repo |
+| --- | --- |
+| API | FastAPI, Pydantic v2 |
+| Orchestration | LangGraph |
+| Models | OpenAI-compatible HTTP via OpenRouter. Model ids come from the environment |
+| Database | PostgreSQL 16, SQLAlchemy 2 async, Alembic, asyncpg |
+| Checkpoints | `langgraph-checkpoint-postgres`, or memory in tests |
+| Cache, sessions, optional queue | Redis 7, optional Celery |
+| Vector search | Weaviate, used for synthetic payer-rule chunks |
+| FHIR | HAPI FHIR R4 and `fhir.resources` |
+| Speech | Optional `openai-whisper` installed by you. Not in the default requirements, because it pulls in a large ML stack |
+| Observability | Structured logging. Langfuse when you start the optional Compose overlay and set keys |
+| Containers | Docker Compose for infrastructure. The API runs on the host with Uvicorn |
+| CI | GitHub Actions: Black, Flake8, pytest, and a pattern check for private keys and removed demo passwords |
+
+Prometheus and Grafana are not part of this Compose stack. spaCy, scispaCy, and ClinicalBERT weights are not dependencies of this repository. Do not download or redistribute model weights unless that model's licence allows it. Point local Whisper and any future clinical model at the official upstream distribution.
+
+## Repository structure
+
+```text
+api/            FastAPI app, auth, orchestrator graph, FHIR, services
+db/             SQLAlchemy models and enums
+alembic/        Schema migrations
+ui/             Clinician and operator pages served by the API
+scripts/        Local demo user seed, HAPI seed, startup helper
+tests/          Unit tests and optional Redis checks
+infra/          Docker Compose for Postgres, Redis, Weaviate, HAPI, optional Langfuse
+docs/           Architecture, local development, security notes
+.github/        CI workflow
 ```
 
-### Quick Docker Start
+## Running locally
 
-```bash
-docker-compose up --build
-# API available at http://localhost:8000
-# Dashboard at http://localhost:8501
-# API docs at http://localhost:8000/docs
+Prerequisites: Docker, Python 3.11+, and an OpenRouter API key if you want live SOAP generation. Without a key, unit tests still exercise the stub specialist path.
+
+1. Copy `.env.example` to `.env`.
+2. Set `SESSION_SECRET_KEY` and `JWT_SECRET_KEY` to long random values:
+
+   ```powershell
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+
+3. Copy `infra/.env.example` to `infra/.env` if you want Compose to read it. The checked-in defaults are local development only. Change them before any shared or deployed use.
+4. Create a virtualenv and install dependencies:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt -r requirements-dev.txt
+   ```
+
+5. Start infrastructure:
+
+   ```powershell
+   docker compose --env-file infra/.env -f infra/docker-compose.yml up -d
+   ```
+
+6. Apply migrations and seed synthetic data:
+
+   ```powershell
+   alembic upgrade head
+   python -m scripts.seed_users --demo
+   python scripts/seed_hapi_fhir.py --base-url http://localhost:8082/fhir
+   ```
+
+7. Start the API:
+
+   ```powershell
+   uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+`.\scripts\start_dev.ps1` runs those steps on Windows. It creates `.venv`, starts Compose, migrates, generates demo users, seeds HAPI, and launches Uvicorn.
+
+`DATABASE_URL` for the host process must use `localhost` and the `postgresql+asyncpg://` driver. Compose uses the same password only inside the local Postgres container.
+
+On Windows, `api/event_loop.py` selects a selector event loop so psycopg checkpoints can run. It is imported from `api/main.py`.
+
+| Service | Local URL |
+| --- | --- |
+| API docs | http://127.0.0.1:8000/docs |
+| Health | http://127.0.0.1:8000/health |
+| SOAP review | http://127.0.0.1:8000/ui/soap-review/ |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+| Weaviate | http://localhost:8080 |
+| HAPI FHIR | http://localhost:8082/fhir |
+| Langfuse overlay | http://127.0.0.1:3000 |
+
+Langfuse is optional. Leave `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` unset unless that stack is running. See [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
+
+## Synthetic demo workflow
+
+1. Start Docker infrastructure.
+2. Apply database migrations.
+3. Seed synthetic users with `python -m scripts.seed_users --demo`.
+4. Seed synthetic HAPI patients and encounters.
+5. Start FastAPI.
+6. Open http://127.0.0.1:8000/ui/soap-review/ and sign in with the generated local user. The password is printed once and written to `.local-demo-credentials`, which is gitignored.
+7. Choose **Load demo encounters**. That syncs `Patient/healthos-sample-patient-001` into Postgres.
+8. Submit the synthetic transcript.
+9. Generate a draft SOAP note.
+10. Review and edit the sections.
+11. Approve. The API writes a `DocumentReference` to local HAPI FHIR.
+
+Create a local demo user with the seed command. Do not use demo credentials in production.
+
+Confirm the written note at:
+
+`http://localhost:8082/fhir/DocumentReference?patient=healthos-sample-patient-001`
+
+## Testing
+
+```powershell
+pip install -r requirements.txt -r requirements-dev.txt
+black --check .
+flake8 .
+pytest
 ```
 
----
+CI runs the same checks and does not start Docker. Orchestrator tests force the memory checkpointer. FHIR client tests mock HTTP. Redis integration tests skip themselves when Redis is down. Live HAPI and Postgres checkpoint tests are not part of the default CI job.
 
-## 🔄 Workflow Walkthrough
+## Security model
 
-### Step-by-step patient encounter flow:
+Designed with HIPAA-aligned security principles: authenticated access, tenant scoping, password hashes, de-identification before external model calls, and an audit trail. Formal compliance certification has not been performed.
 
-**1. Patient submits intake** (via API or Streamlit form, now with voice/image)
-```json
-POST /intake
-{
-  "patient_id": "P-00234",
-  "chief_complaint": "Chest tightness and shortness of breath for 2 days",
-  "current_medications": ["Metformin 500mg", "Lisinopril 10mg"],
-  "age": 58,
-  "gender": "M"
-}
-```
+Security architecture includes encryption-in-transit expectations for a real deployment, access control, and auditability concepts. This repository's Compose file publishes database ports on localhost for development and uses anonymous Weaviate access. That is acceptable only on a trusted workstation.
 
-**2. Agent 1 (Intake & NER)** extracts entities with multimodal analysis.
+Details and threat boundaries: [docs/SECURITY.md](docs/SECURITY.md).
 
-**3. Agent 2 (RAG History)** retrieves records with predictive insights.
+## Limitations
 
-**4. Agent 3 (Note Generator)** produces SOAP note with ethical checks.
+- Early MVP. Interfaces and behaviour will change.
+- No clinical validation study and no claim of diagnostic performance.
+- De-identification is a deterministic placeholder pass, not a qualified expert determination or Safe Harbor assessment.
+- Model output quality depends entirely on the configured provider and model.
+- Whisper, Langfuse, and Weaviate are optional. Missing them degrades features rather than blocking transcript SOAP review.
+- Prior auth, tenant administration, and parts of the operator UI are demonstration screens over local state.
+- Horizontal scaling is a design goal. Production scalability has not been benchmarked.
+- A reliability target for a future production deployment has not been measured here.
 
-**5. Agent 4 (Drug Checker)** flags interactions using agentic reasoning.
+## Project status
 
-**6. Agent 5 (Triage)** assigns urgency with real-time data integration.
+Early MVP / technical validation project.
 
-**7. Output** to dashboard as structured summary.
+The documentation workflow, orchestrator, auth, persistence, and local FHIR write-back are implemented and covered by unit tests. They are not a production rollout. RCM is an implemented prototype with explicit stub behaviour. Prior auth is not an agent.
 
----
+## Roadmap
 
-## 📊 Sample Output
+Possible later work, none of it claimed as done:
 
-```
-═══════════════════════════════════════════════════
-  COGMINDAI MEDICAL INTAKE SYSTEM — PATIENT SUMMARY
-  Patient ID: P-00234 | Encounter: 2026-03-01 10:42 AM
-═══════════════════════════════════════════════════
+- Stronger de-identification and a documented evaluation set
+- A real clinical-coding model, only if its licence allows the intended use
+- Postgres-backed prior authorisation instead of the demo board
+- Authenticated Weaviate and locked-down Compose for anything beyond a laptop
+- Measured load tests before any statement about throughput or uptime
+- A chosen open-source licence, if the copyright holder decides to grant one
 
-TRIAGE LEVEL:  🔴 IMMEDIATE
-REASON:        Chest tightness + dyspnoea in hypertensive diabetic male
+## License
 
-SOAP NOTE:
-  S: [See above]
-  O: [Pending vitals, historical ECG retrieved]
-  A: [Rule out ACS, pulmonary embolism]
-  P: [ECG + troponin STAT, physician review within 30 min]
+Copyright © Riyaz M. All rights reserved unless otherwise stated.
 
-DRUG INTERACTIONS:  ✅ No critical interactions flagged
-HISTORY RETRIEVED:  3 relevant prior encounters loaded from vector store
-PROCESSING TIME:    4.2 seconds
+No permissive licence is granted by this repository. You may not copy or reuse the application code except where a file explicitly says otherwise. Dependencies remain under their own licences.
 
-Generated by CogmindAI Healthcare Multi-Agent System
-NOT FOR CLINICAL USE WITHOUT PHYSICIAN VALIDATION
-═══════════════════════════════════════════════════
-```
+## Portfolio / engineering context
 
----
+This repository is a public technical demonstration of the HealthOS design: durable orchestration, human review, and FHIR write-back on synthetic data. It is aimed at engineers reviewing architecture, not at clinicians using it for care.
 
-## 🔬 Key Technical Decisions
+This repository supersedes an earlier healthcare multi-agent architecture experiment and now contains the public portfolio implementation of HealthOS.
 
-### Why LangGraph for Agentic AI?
-
-LangGraph (v0.2+) supports autonomous agents with planning, memory, and multi-agent debates, aligning with 2026 trends in agentic AI for healthcare. It enables conditional routing and human-in-the-loop, critical for ethical deployment.
-
-### Why ChromaDB?
-
-Local, cost-free vector store; swappable for enterprise options.
-
-### Why Synthetic Data?
-
-Ethical and legal compliance; no real PHI.
-
-**New for 2026:** Emphasis on agentic autonomy reduces latency; integrated bias checks ensure fairness.
-
----
-
-## 🧪 Running Tests
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Run with coverage report
-pytest tests/ --cov=agents --cov=api --cov-report=html
-
-# Test a single agent
-pytest tests/test_agents.py::test_intake_agent -v
-```
-
----
-
-## 🌐 API Reference
-
-Full docs at `http://localhost:8000/docs`.
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/intake` | POST | Triggers full pipeline |
-| `/patient/{id}` | GET | Recent summary |
-| `/patient/{id}/history` | GET | Prior summaries |
-| `/health` | GET | Status check |
-
----
-
-## 🗺️ Roadmap
-
-- [x] Project structure and architecture design
-- [x] LangGraph StateGraph scaffolding
-- [x] Agent 1: Intake & NER
-- [x] Agent 2: RAG History Retrieval
-- [x] Agent 3: SOAP Note Generator
-- [x] Agent 4: Drug Interaction Checker (OpenFDA)
-- [x] Agent 5: Triage & Urgency Scorer
-- [x] FastAPI REST layer
-- [x] Streamlit clinician dashboard
-- [x] Docker Compose deployment
-- [x] Test suite (≥ 80% coverage)
-- [ ] Multimodal input (voice/image) via GPT-5.2
-- [ ] FHIR R4 export compatibility
-- [ ] Integration with wearables/telemedicine
-- [ ] Ethical AI module for bias and fairness
-- [ ] Agentic enhancements with multi-agent debates
-
----
-
-## 👤 About the Author
-
-**Riz** — Senior AI/ML Engineer & Founder of [CogmindAI](https://cogmindai.com), Sydney, Australia.
-
-Previously: Senior Generative AI Engineer at ModuleMD (San Francisco), building RAG pipelines reducing transcription by 60%.
-
-This project incorporates 2026 agentic AI trends for modern healthcare automation.
-
-**Connect:**
-- 💼 [LinkedIn](https://linkedin.com/in/YOUR_PROFILE)
-- 🌐 [CogmindAI](https://cogmindai.com)
-- 🐦 [GitHub](https://github.com/YOUR_USERNAME)
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE).
-
----
-
-## 🙏 Acknowledgements
-
-- [LangChain / LangGraph](https://github.com/langchain-ai/langgraph)
-- [LlamaIndex](https://llamaindex.ai)
-- [OpenFDA](https://open.fda.gov)
-- [AgenticHealthAI](https://github.com/AgenticHealthAI/Awesome-AI-Agents-for-Healthcare)
-- Open-source AI community
-
----
-
-*Built with purpose. Not for clinical use. Demonstrates agentic AI engineering.*
-
----
-
+Model provider and model id are configuration. `OPENROUTER_MODEL_DEV`, `OPENROUTER_MODEL_PRODUCTION`, `OPENROUTER_MODEL_DEMO`, and `DOCUMENTATION_SOAP_MODEL` can point at any chat model your account can call. The checked-in examples use `meta-llama/llama-3.1-8b-instruct` only as a placeholder id.

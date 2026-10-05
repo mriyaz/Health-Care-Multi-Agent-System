@@ -1,2 +1,0 @@
-﻿# LlamaIndex document ingestion
-

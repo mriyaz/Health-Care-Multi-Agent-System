@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthOS — Tenant Management</title>
+  <link rel="stylesheet" href="/ui/shared/healthos.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">H</span>
+      <div>
+        <h1>Tenant Management</h1>
+        <p class="subtitle">LLM tier · usage · billing view · #105</p>
+      </div>
+    </div>
+    <div id="auth-status" class="auth-status">Not signed in</div>
+  </header>
+  <nav class="top-nav"></nav>
+
+  <main class="layout">
+    <section id="login-panel" class="card">
+      <h2>Sign in (admin only)</h2>
+      <form id="login-form" class="form-grid">
+        <label>Username <input type="text" id="username" value="admin" required /></label>
+        <label>Password <input type="password" id="password" required /></label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p id="login-error" class="error hidden"></p>
+    </section>
+
+    <section id="tenant-panel" class="card hidden">
+      <h2>Tenants</h2>
+      <p class="hint">Configure per-tenant LLM routing tier (stored in Redis). Task counts reflect Postgres usage.</p>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="tenant-table">
+          <thead>
+            <tr>
+              <th>Tenant</th>
+              <th>Users</th>
+              <th>Tasks</th>
+              <th>LLM tier</th>
+              <th>Display name</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="tenant-error" class="error hidden"></p>
+    </section>
+  </main>
+  <footer class="app-footer">HealthOS · Tenant admin</footer>
+  <script src="/ui/shared/healthos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

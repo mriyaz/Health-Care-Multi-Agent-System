@@ -1,0 +1,8 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+# Repo-root imports (`from api...`) without installing as a package.
+pythonpath = ["."]
+testpaths = ["tests"]

@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthOS — RCM Analytics</title>
+  <link rel="stylesheet" href="/ui/shared/healthos.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">H</span>
+      <div>
+        <h1>RCM Analytics</h1>
+        <p class="subtitle">First-pass · denial · revenue at risk · #103</p>
+      </div>
+    </div>
+    <div id="auth-status" class="auth-status">Not signed in</div>
+  </header>
+  <nav class="top-nav"></nav>
+
+  <main class="layout layout-wide">
+    <section id="login-panel" class="card">
+      <h2>Sign in</h2>
+      <form id="login-form" class="form-grid">
+        <label>Username <input type="text" id="username" value="biller" required /></label>
+        <label>Password <input type="password" id="password" required /></label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p id="login-error" class="error hidden"></p>
+    </section>
+
+    <div id="analytics-panel" class="hidden">
+      <section class="card">
+        <h2>Filters</h2>
+        <div class="form-grid">
+          <label>Date from <input type="date" id="date-from" /></label>
+          <label>Date to <input type="date" id="date-to" /></label>
+          <label>Payer <input type="text" id="payer-filter" placeholder="e.g. UHC" /></label>
+          <div class="actions" style="align-items:flex-end">
+            <button id="apply-btn" class="btn btn-primary">Apply</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Summary</h2>
+        <div id="summary-stats" class="stats-grid"></div>
+        <p id="analytics-note" class="hint"></p>
+      </section>
+
+      <div class="form-grid">
+        <section class="card">
+          <h2>Denials by payer</h2>
+          <div id="payer-chart"></div>
+        </section>
+        <section class="card">
+          <h2>Denials by CPT</h2>
+          <div id="cpt-chart"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Claims by status</h2>
+        <table class="data-table" id="status-table">
+          <thead><tr><th>Status</th><th>Count</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+    <p id="analytics-error" class="error hidden"></p>
+  </main>
+  <footer class="app-footer">HealthOS · RCM Analytics</footer>
+  <script src="/ui/shared/healthos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

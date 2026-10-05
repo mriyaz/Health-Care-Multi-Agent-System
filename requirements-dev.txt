@@ -1,0 +1,7 @@
+# CI & local dev: lint + tests (see .github/workflows/ci.yml)
+black==24.10.0
+flake8==7.1.1
+pytest==8.3.4
+
+# Optional local speech-to-text (pulls in torch). Without it, use transcript-only intake or set HEALTHOS_SKIP_WHISPER=1.
+# openai-whisper

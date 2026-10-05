@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthOS — RCM Code Review</title>
+  <link rel="stylesheet" href="/ui/shared/healthos.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">H</span>
+      <div>
+        <h1>RCM Code Review</h1>
+        <p class="subtitle">ICD/CPT suggestions · SHAP · denial risk · #102</p>
+      </div>
+    </div>
+    <div id="auth-status" class="auth-status">Not signed in</div>
+  </header>
+  <nav class="top-nav"></nav>
+
+  <main class="layout layout-wide">
+    <section id="login-panel" class="card">
+      <h2>Sign in</h2>
+      <p class="hint">Biller or admin role required for code approval</p>
+      <form id="login-form" class="form-grid">
+        <label>Username <input type="text" id="username" value="biller" required /></label>
+        <label>Password <input type="password" id="password" required /></label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p id="login-error" class="error hidden"></p>
+    </section>
+
+    <section id="intake-panel" class="card hidden">
+      <div class="panel-head">
+        <h2>1. Submit code audit</h2>
+        <button id="bootstrap-btn" class="btn btn-secondary btn-sm">Load demo encounters</button>
+      </div>
+      <div class="form-grid">
+        <label class="full-width">Encounter
+          <select id="encounter-select"><option value="">— Select —</option></select>
+        </label>
+        <label class="full-width">Clinical note
+          <textarea id="clinical-note" rows="8" placeholder="Paste clinical note text…"></textarea>
+        </label>
+        <label>Specialty <input id="specialty" value="GENERAL" /></label>
+        <label>Payer <input id="payer" value="UHC" /></label>
+      </div>
+      <div class="actions">
+        <button id="audit-btn" class="btn btn-primary">Run code audit</button>
+      </div>
+      <p id="intake-status" class="hint hidden"></p>
+      <p id="intake-error" class="error hidden"></p>
+    </section>
+
+    <section id="review-panel" class="card hidden">
+      <div class="panel-head"><h2>2. Review &amp; approve codes</h2><div id="risk-badge" class="badge"></div></div>
+
+      <div class="form-grid">
+        <div class="card" style="box-shadow:none">
+          <h2>ICD-10 suggestions</h2>
+          <div id="icd-list"></div>
+          <h2 style="margin-top:1rem">SHAP (ICD primary)</h2>
+          <div id="shap-icd"></div>
+        </div>
+        <div class="card" style="box-shadow:none">
+          <h2>CPT suggestions</h2>
+          <div id="cpt-list"></div>
+          <h2 style="margin-top:1rem">SHAP (CPT primary)</h2>
+          <div id="shap-cpt"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0.75rem;box-shadow:none">
+        <h2>Validation &amp; pre-bill audit</h2>
+        <div id="validation-result"></div>
+        <div id="prebill-result" style="margin-top:0.5rem"></div>
+      </div>
+
+      <div class="form-grid" style="margin-top:0.75rem">
+        <label>Override ICD-10 <input id="override-icd" placeholder="Optional override code" /></label>
+        <label>Override CPT <input id="override-cpt" placeholder="Optional override code" /></label>
+        <label class="full-width">Reviewer notes
+          <textarea id="reviewer-notes" rows="2"></textarea>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="approve-btn" class="btn btn-success">Approve codes</button>
+        <button id="reject-btn" class="btn btn-danger">Reject</button>
+      </div>
+      <p id="review-error" class="error hidden"></p>
+      <p id="review-result" class="hint hidden"></p>
+    </section>
+  </main>
+  <footer class="app-footer">HealthOS · RCM · <a href="/docs" target="_blank">API docs</a></footer>
+  <script src="/ui/shared/healthos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

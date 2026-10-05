@@ -1,2 +1,0 @@
-﻿# GET /patient/{id} endpoint
-

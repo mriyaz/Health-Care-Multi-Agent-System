@@ -1,0 +1,20 @@
+# Flake8 + Black: Black owns wrapping; we ignore E501 to avoid duplicate fights on long strings/docstrings.
+# E203: whitespace before ':' — Black-compatible (slice notation).
+[flake8]
+max-line-length = 88
+extend-ignore = E203, E501
+per-file-ignores =
+    # Event-loop or sys.path setup must run before these imports.
+    api/main.py:E402
+    scripts/seed_users.py:E402
+    scripts/start_dev.py:E402
+    tests/redis_next_steps/listen_agent_events.py:E402
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    .eggs,
+    *.egg,
+    build,
+    dist
